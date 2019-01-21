@@ -1,0 +1,143 @@
+<style>
+  body {   background-color: #ffffff;
+  background-image: url("img/bg1.png"), url("img/bg2.png");
+  background-size: auto 70%, auto;
+  background-position: bottom right;
+  background-repeat: no-repeat, repeat;
+  background-attachment: fixed; }
+  textarea { width: 600px; display: block; margin: 10px 0; height: 200px; }
+  .dws { display: none }
+  .e { color: red; }
+  #langPicker { text-align: right }
+  #langPicker a { display: inline-block; color: #525252; }
+  #langPicker img { height: 30px; padding: 0 2px; }
+</style>
+<div id="langPicker"></div>
+<div style="font-weight: bold; font-size: 30px; margin-left: 30px; color: #454e6d; margin-bottom: 10px">
+    KAYANO'S CODE
+</div>
+<div style="padding: 10px 30px;">
+  <div class="lang" langID="desc"></div>
+  <div id="e"></div>
+  <textarea id="input"></textarea>
+  <div id="solve" style="width: 600px; border-radius: 5px; padding: 10px 0; background: #454e6d; border: 1px solid #9aa2bf; text-align: center; color: white" class="lang" langID="solve"></div>
+</div>
+<script>
+  const langs = {
+    "VN": {
+      "name": "Tiếng Việt",
+      "desc": "Tiện ích này cho phép bạn giải mật mã Kayano cũng như tạo ra cho mình một dãy số mật mã để trao đổi với những fan Cô gái Văn chương khác. Khi sử dụng bạn lưu ý những điều sau:<ul><li>Tiện ích sẽ tự động xem xét dòng chữ nhập vào là mã cần giải, hay là câu cần tạo mật mã.</li><li>Khi nhập dạng mật mã, những ký tự cho phép là từ 0 đến 9, dấu gạch giữa (-) và xuống dòng. Những số lớn hơn 36 và nhỏ hơn 0 sẽ bị bỏ qua</li><li>Khi nhập dạng câu để chuyển thành mật mã, những ký tự cho phép là những chữ cái trong bảng chữ cái tiếng Việt, dấu cách, dấu phẩy (,) và xuống dòng.</li><li>Nếu nhập vào những ký tự khác, hay trong cùng một lần nhập có các ký tự thuộc cả hai dạng trên, thì tiện ích sẽ báo lỗi</li></ul>",
+      "inputError": "Đã có lỗi trong việc nhận dữ liệu, bạn nên kiểm tra lại và bảo đảm theo bạn nhập đúng như hướng dẫn.",
+      "solve": "Tạo / Giải mã"
+    },
+    "EN": {
+      "name": "English",
+      "desc": "This app allows you to solve Kayano's code as well as generate your own code to talk with other Bungaku Shoujo's fans. When using the app, please follow these instruction:<ul><li>The app will detect automatically whether you want to encode or decode based on the input you provided.</li><li>When providing codes for decoding, please only input numbers (from 1 to 28), dashes (not hyphen) and new lines. Any numbers that are out of range will be disregarded.</li><li>When attempting to encode, please only provide characters in standard English alphabet, spaces, commas, apostrophes and new lines.</li><li>Failure to follow these instruction might result in errors.</li></ul>",
+      "inputError": "There has been an error processing the input, please check the data provided and make sure that you are following the instruction.",
+      "solve": "Generate"
+    }
+  }
+
+  const alphabetVN = "KLMNOÔƠPQRSTUƯVXYAĂÂBCDĐEÊGHI";
+  const alphabetEN = "KLMNOPQRSTUVWXYZABCDEFGHIJ"
+  const vowels = "ÀÁẢÃẠÈÉẺẼẸÌÍỈĨỊÒÓỎÕỌÙÚỦŨỤẰẮẲẴẶẦẤẨẪẬỀẾỂỄỆỜỚỞỠỢỒỐỔỖỘỪỨỬỮỰỲÝỶỸỴ";
+  const replace = "AEIOUĂÂÊƠÔƯY";
+  const $ = function(elem) { return document.querySelector(elem); }
+
+  for (let lang in langs) {
+    $("#langPicker").innerHTML += `<a href="?lang=${lang}" title="${langs[lang].name}"><img src="img/flag${lang}.png"></a>`;
+  }
+
+  const currentLang = new URL(window.location.href).searchParams.get("lang") || "EN";
+  Array.from(document.querySelectorAll('.lang')).forEach(div => {
+    div.innerHTML = langs[currentLang][div.getAttribute("langID")];
+  })
+  $("#solve").onclick = function() {
+    let result = "";
+    let input = $("#input").value.toUpperCase();
+    console.log(input);
+    if (currentLang == "VN") {
+      if (input.match(/^[A-EG-IK-VX-Y ,\nÁÀẢÃẠÉÈẺẼẸÍÌỈĨỊÓÒỎÕỌÚÙỦŨỤĂẮẰẲẴẶÂẤẦẨẪẬÊẾỀỂỄỆƠỚỜỞỠỢÔỐỒỔỖỘƯỨỪỬỮỰÝỲỶỸỴĐ]+$/)) {
+        let tone = "";
+        input = input.replace(/[ÀÁẢÃẠÈÉẺẼẸÌÍỈĨỊÒÓỎÕỌÙÚỦŨỤẰẮẲẴẶẦẤẨẪẬỀẾỂỄỆỜỚỞỠỢỒỐỔỖỘỪỨỬỮỰỲÝỶỸỴ]/g, char => {
+          char = vowels.indexOf(char);
+          return replace[Math.floor(char / 5)] + ((char % 5) + 1);
+        }).split('');
+        input = input.map((char, index) => {
+          if (alphabetVN.includes(char)) return alphabetVN.indexOf(char) + 1;
+          char = char.charCodeAt(0);
+          if (char == 32) return tone ? `${tone}-35` : 35;
+          if (char == 10) return tone ? `${tone}-<br>` : '<br>';
+          if (char == 44) return 36;
+          if (char >= 48) tone = char - 19;
+        }).filter(char => { return char }).join('-').replace(/-<br>-/g, "<br>");
+        $("#input").value = input;
+        $("#e").style.display = "none";
+      } else if (input.match(/^[0-9\n-]+$/)) {
+
+        input = input.split('-').map(char => {
+          if (char == "\n") return "   ";
+          char = parseInt(char);
+          if (char <= 29) return alphabetVN[char - 1];
+          if (char <= 34) return char - 30;
+          if (char == 35) return " ";
+          if (char == 36) return "  ";
+        }).join('').split(' ').map(word => {
+          if (!word) return;
+          tone = word.match(/\d$/);
+          if (tone) {
+            tone = tone[0];
+            if (word.includes("Ê")) return word.replace("Ê", vowels[tone + 5*replace.indexOf("Ê")]);
+            if (word.includes("Ơ")) return word.replace("Ơ", vowels[tone + 5*replace.indexOf("Ơ")]);
+            let vowelCount = (word.match(/[AĂÂIUƯEOÔY]/g) || []).length;
+            if (vowelCount == 1) return word.replace(/[AĂÂIUƯEOÔY]/, char => { return vowels[tone + 5*replace.indexOf(char)]; });
+            if (vowelCount == 2) {
+              if (word.includes('GI') || word.includes('QU')) return word.replace(/(GI|QU)[AĂÂIUƯEOÔY]/, char => { return char.slice(0, 2) + vowels[tone + 5*replace.indexOf(char.slice(2))]; });
+              if ("AĂÂIUƯEOÔY".includes(word[word.length - 1])) return word.replace(/[AĂÂIUƯEOÔY]/, char => { return vowels[tone + 5*replace.indexOf(char)]; });
+              return word.replace(/[AĂÂIUƯEOÔY]+/, char => { return char[0] + vowels[tone + 5*replace.indexOf(char[1])]; });
+            } else {
+              if (word.includes('GI') || word.includes('QU')) return word.replace(/(GI|QU)[AĂÂIUƯEOÔY]+/, char => { 
+                return char.slice(0, 3) + vowels[tone + 5*replace.indexOf(char[3])]; 
+              });
+              return word.replace(/[AĂÂIUƯEOÔY]+/, char => { return char.slice(0, 2) + vowels[tone + 5*replace.indexOf(char[2])]; });
+            }
+            return word.slice(0, -1);
+          }
+          return word;
+        }).join(' ').replace(/  +/g, char => { 
+          if (char.length == 2) return ',';
+          return '\n';
+        });
+        $("#input").value = input;
+        $("#e").style.display = "none";
+      } else { 
+        $("#e").innerHTML = langs[currentLang].inputError;
+        $("#e").style.display = "block";
+      }
+    } else if (currentLang == "EN") {
+      if (input.match(/^[A-Z '\n]+$/)) {
+        input = input.split('').map(char => {
+          if (char == ' ') return 28;
+          if (char == "'") return 29;
+          if (char == "\n") return '<br>';
+          return alphabetEN.indexOf(char) + 1;
+        }).join('-').replace(/-<br>-/g, '<br>');
+        $("#input").value = input;
+        $("#e").style.display = "none";
+      } else if (input.match(/^[0-9\n-]+$/)) {
+        input = input.split('-').map(char => {
+          if (char == "\n") return "  ";
+          if (char == 27) return "'";
+          if (char == 28) return " ";
+          return alphabetEN[char - 1];
+        }).join('').replace(/  +/, "\n");
+        console.log(input);
+        $("#input").value = input;
+        $("#e").style.display = "none";
+      } else { 
+        $("#e").innerHTML = langs[currentLang].inputError;
+        $("#e").style.display = "block";
+      }
+    }
+  }
+</script>
